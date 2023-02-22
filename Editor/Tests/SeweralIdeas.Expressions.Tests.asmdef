@@ -1,0 +1,22 @@
+{
+    "name": "SeweralIdeas.Expressions.Tests",
+    "rootNamespace": "SeweralIdeas.Expressions.Tests",
+    "references": [
+        "GUID:afbc5574bf4dc304ab10c01e5ce94b0c"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

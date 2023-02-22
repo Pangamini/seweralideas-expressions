@@ -2,15 +2,24 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using JetBrains.Annotations;
+using System.Diagnostics.CodeAnalysis;
 using SeweralIdeas.Pooling;
 
 namespace SeweralIdeas.Expressions
 {
-    public static class ExpressionParser
+    public static class ExpressionCompiler
     {
         public static readonly IResolver DefaultResolver = new Resolver();
 
+        [Flags]
+        public enum Options
+        {
+            None = 0,
+            OptimizeConstants = 1 << 0
+        }
+
+        public const Options DefaultOptions = Options.OptimizeConstants;
+        
         public interface IResolver
         {
             IExpression ResolveMethodInvocation(string invocationName, List<IExpression> arguments);
@@ -32,9 +41,9 @@ namespace SeweralIdeas.Expressions
         }
 
 
-        public static IExpression<T> Parse<T>(string expText, IResolver resolver)
+        public static IExpression<T> Parse<T>([NotNull] string expText, [NotNull] IResolver resolver, Options options = DefaultOptions)
         {
-            IExpression exp = Parse(expText, resolver);
+            IExpression exp = Parse(expText, resolver, options);
 
             if(exp is IExpression<T> tExp)
                 return tExp;
@@ -42,11 +51,11 @@ namespace SeweralIdeas.Expressions
             throw new ParseException($"Invalid return type '{exp.ReturnType.Name}', expected '{typeof( T ).Name}'");
         }
 
-        public static IExpression<T> Parse<T>(string expText) => Parse<T>(expText, DefaultResolver);
+        public static IExpression<T> Parse<T>([NotNull] string expText, Options options = DefaultOptions) => Parse<T>(expText, DefaultResolver, options);
 
-        public static IExpression Parse(string expText) => Parse(expText, DefaultResolver);
+        public static IExpression Parse([NotNull] string expText, Options options = DefaultOptions) => Parse(expText, DefaultResolver, options);
 
-        public static IExpression Parse([NotNull] string expText, [NotNull] IResolver resolver)
+        public static IExpression Parse([NotNull] string expText, [NotNull] IResolver resolver, Options options = DefaultOptions)
         {
             if(expText == null)
                 throw new ArgumentNullException(nameof(expText));
@@ -68,12 +77,18 @@ namespace SeweralIdeas.Expressions
                     throw new ParseException("Parsing error");
             }
 
-            expression = PurifierVisitor(expression);
+            if(HasOption(options,Options.OptimizeConstants))
+            {
+                expression = PurifierVisitor(expression);
+            }
 
             return expression;
-
         }
 
+        private static bool HasOption(Options options, Options option)
+        {
+            return (options & option) == option;
+        }
 
 
         private static void ExpressionToConstant(ref IExpression expression)
@@ -1138,17 +1153,17 @@ namespace SeweralIdeas.Expressions
         public OperatorOrOperand(IExpression expression)
         {
             m_expression = expression;
-            m_operator = ExpressionParser.Operator.None;
+            m_operator = ExpressionCompiler.Operator.None;
         }
 
-        public OperatorOrOperand(ExpressionParser.Operator op)
+        public OperatorOrOperand(ExpressionCompiler.Operator op)
         {
             m_expression = null;
             m_operator = op;
         }
 
         private IExpression m_expression;
-        private ExpressionParser.Operator m_operator;
+        private ExpressionCompiler.Operator m_operator;
 
         public bool IsOperand => m_expression != null;
         public bool IsOperator => m_expression == null;
@@ -1160,7 +1175,7 @@ namespace SeweralIdeas.Expressions
                 return m_expression;
             }
         }
-        public ExpressionParser.Operator Operator
+        public ExpressionCompiler.Operator Operator
         {
             get {
                 if(!IsOperator)
@@ -1180,24 +1195,24 @@ namespace SeweralIdeas.Expressions
 
     internal static class Extensions
     {
-        public static ExpressionParser.Operator GetExpectedOperator(this List<OperatorOrOperand> elements, int index, ExpressionParser.Operator expectedOperator)
+        public static ExpressionCompiler.Operator GetExpectedOperator(this List<OperatorOrOperand> elements, int index, ExpressionCompiler.Operator expectedOperator)
         {
             if(elements.Count <= index || !elements[index].IsOperator || elements[index].Operator != expectedOperator)
-                throw new ExpressionParser.ParseException($"Expected operator '{expectedOperator}'");
+                throw new ExpressionCompiler.ParseException($"Expected operator '{expectedOperator}'");
             return expectedOperator;
         }
 
-        public static ExpressionParser.Operator GetExpectedOperator(this List<OperatorOrOperand> elements, int index)
+        public static ExpressionCompiler.Operator GetExpectedOperator(this List<OperatorOrOperand> elements, int index)
         {
             if(elements.Count <= index || !elements[index].IsOperator)
-                throw new ExpressionParser.ParseException($"Expected operator");
+                throw new ExpressionCompiler.ParseException($"Expected operator");
             return elements[index].Operator;
         }
 
         public static IExpression GetExpectedOperand(this List<OperatorOrOperand> elements, int index)
         {
             if(elements.Count <= index || index < 0 || !elements[index].IsOperand)
-                throw new ExpressionParser.ParseException($"Expected operand");
+                throw new ExpressionCompiler.ParseException($"Expected operand");
             return elements[index].Operand;
         }
     }

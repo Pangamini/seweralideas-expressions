@@ -276,7 +276,7 @@ namespace SeweralIdeas.Expressions
                     }
                 }
                 sb.Append(")");
-                throw new ExpressionParser.ParseException(sb.ToString());
+                throw new ExpressionCompiler.ParseException(sb.ToString());
             }
         }
         
