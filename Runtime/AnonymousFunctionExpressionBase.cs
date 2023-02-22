@@ -30,7 +30,7 @@ namespace SeweralIdeas.Expressions
         public override TRet Evaluate(IEvalContext context) => Func();
         public override string AsText() => $"{Name}()";
 
-        public override void VisitChildren(IExpression.Visitor visitor)
+        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
         {
         }
     }
@@ -49,7 +49,7 @@ namespace SeweralIdeas.Expressions
         public override TRet Evaluate(IEvalContext context) => Func(Arg0.Evaluate(context));
         public override string AsText() => $"{Name}({Arg0.AsText()})";
         
-        public override void VisitChildren(IExpression.Visitor visitor)
+        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
         {
             Arg0 = (IExpression<TArg0>)visitor(Arg0);
         }
@@ -71,7 +71,7 @@ namespace SeweralIdeas.Expressions
         public override TRet Evaluate(IEvalContext context) => Func(Arg0.Evaluate(context), Arg1.Evaluate(context));
         public override string AsText() => $"{Name}({Arg0.AsText()}, {Arg1.AsText()})";
         
-        public override void VisitChildren(IExpression.Visitor visitor)
+        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
         {
             Arg0 = (IExpression<TArg0>)visitor(Arg0);
             Arg1 = (IExpression<TArg1>)visitor(Arg1);
@@ -96,7 +96,7 @@ namespace SeweralIdeas.Expressions
         public override TRet Evaluate(IEvalContext context) => Func(Arg0.Evaluate(context), Arg1.Evaluate(context), Arg2.Evaluate(context));
         public override string AsText() => $"{Name}({Arg0.AsText()}, {Arg1.AsText()})";
         
-        public override void VisitChildren(IExpression.Visitor visitor)
+        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
         {
             Arg0 = (IExpression<TArg0>)visitor(Arg0);
             Arg1 = (IExpression<TArg1>)visitor(Arg1);
