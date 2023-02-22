@@ -79,7 +79,7 @@ namespace SeweralIdeas.Expressions
 
             if(HasOption(options,Options.OptimizeConstants))
             {
-                expression = PurifierVisitor(expression);
+                expression = expression.SimplifyIfPure(out var pure);
             }
 
             return expression;
@@ -88,65 +88,6 @@ namespace SeweralIdeas.Expressions
         private static bool HasOption(Options options, Options option)
         {
             return (options & option) == option;
-        }
-
-
-        private static void ExpressionToConstant(ref IExpression expression)
-        {
-            if(expression.ReturnType == typeof( int ))
-            {
-                expression = new ConstantIntExpression { Value = ((IExpression<int>)expression).Evaluate(null) };
-                return;
-            }
-            if(expression.ReturnType == typeof( float ))
-            {
-                expression = new ConstantFloatExpression { Value = ((IExpression<float>)expression).Evaluate(null) };
-                return;
-            }
-            if(expression.ReturnType == typeof( bool ))
-            {
-                expression = new ConstantExpression<bool> { Value = ((IExpression<bool>)expression).Evaluate(null) };
-                return;
-            }
-            if(expression.ReturnType == typeof( string ))
-            {
-                expression = new ConstantStringExpression { Value = ((IExpression<string>)expression).Evaluate(null) };
-                return;
-            }
-        }
-
-        private static bool IsPure(IExpression expression)
-        {
-            if(!expression.IsPureSelf)
-                return false;
-
-            bool childrenPure = true;
-
-            IExpression.Visitor visitor = (childExp) =>
-            {
-                if(!IsPure(childExp))
-                    childrenPure = false;
-
-                return childExp;
-            };
-
-            expression.VisitChildren(visitor);
-
-            return childrenPure;
-        }
-
-        private static IExpression PurifierVisitor(IExpression expression)
-        {
-            if(IsPure(expression))
-            {
-                ExpressionToConstant(ref expression);
-            }
-            else
-            {
-                expression.VisitChildren(PurifierVisitor);
-            }
-
-            return expression;
         }
 
         private static bool ParseArguments(ref State state, List<IExpression> outArgs)
@@ -1129,8 +1070,13 @@ namespace SeweralIdeas.Expressions
             object IExpression.Evaluate(IEvalContext context) => throw new NotImplementedException();
             Type IExpression.ReturnType => null;
 
-            public void VisitChildren(IExpression.Visitor visitor)
+            public void VisitChildren(IExpression.ChildReplacementVisitor visitor)
             {
+            }
+            public IExpression SimplifyIfPure(out bool pure)
+            {
+                pure = false;
+                return this;
             }
         }
 
