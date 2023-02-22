@@ -32,6 +32,7 @@ namespace SeweralIdeas.Expressions
         public abstract void VisitChildren(IExpression.Visitor visitor);
         public Type ReturnType => typeof( T );
         object IExpression.Evaluate(IEvalContext context) => Evaluate(context);
+        public override string ToString() => $"<{typeof(T).Name}>{AsText()}";
     }
 
     [Serializable]
@@ -47,9 +48,9 @@ namespace SeweralIdeas.Expressions
 
         public override string AsText() => Value.ToString();
 
-        public override T Evaluate(IEvalContext context) => Value;
-        public override bool IsPureSelf => true;
-        public override void VisitChildren(IExpression.Visitor visitor)
+        public override sealed T Evaluate(IEvalContext context) => Value;
+        public override sealed bool IsPureSelf => true;
+        public override sealed void VisitChildren(IExpression.Visitor visitor)
         {
         }
     }
@@ -617,7 +618,11 @@ namespace SeweralIdeas.Expressions
     {
         public override string AsText()
         {
-            return $"{Value.ToString(CultureInfo.InvariantCulture)}f";
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if(Mathf.Floor(Value) == Value)
+                return Value.ToString(".0", CultureInfo.InvariantCulture);
+            else
+                return Value.ToString(CultureInfo.InvariantCulture);
         }
     }
     
