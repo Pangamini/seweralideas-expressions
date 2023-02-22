@@ -1,0 +1,11 @@
+{
+  "name": "com.seweralideas.expressions",
+  "version": "0.1.0",
+  "displayName": "Expressions",
+  "description": "Runtime compiled string expression evaluation",
+  "author": 
+  {
+    "name": "Boleslav Horak",
+    "email": "seweralideas@gmail.com"
+  }
+}

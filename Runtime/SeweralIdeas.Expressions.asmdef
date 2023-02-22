@@ -1,0 +1,14 @@
+{
+    "name": "SeweralIdeas.Expressions",
+    "rootNamespace": "SeweralIdeas.Expressions",
+    "references": ["GUID:8fc323fcc833d07458890d9361dbb587"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
