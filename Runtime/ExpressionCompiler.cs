@@ -238,7 +238,7 @@ namespace SeweralIdeas.Expressions
 
                 if(operand is NamedObjectExpression namedObj)
                 {
-                    var newOperand = state.resolver.ResolveVariable(namedObj.Name);
+                    var newOperand = state.resolver?.ResolveVariable(namedObj.Name);
                     if(newOperand == null)
                     {
                         throw new ParseException($"Unrecognized symbol '{namedObj.Name}'");
