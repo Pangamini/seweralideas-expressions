@@ -462,6 +462,16 @@ namespace SeweralIdeas.Expressions
                     IfFalse = falseFloat
                 };
             }
+            
+            else if(trueBranch is IExpression<string> trueStr && falseBranch is IExpression<string> falseStr)
+            {
+                operatorExpression = new SelectExpression<string>()
+                {
+                    Condition = conditionBool,
+                    IfTrue = trueStr,
+                    IfFalse = falseStr
+                };
+            }
 
             if(operatorExpression == null)
             {
