@@ -241,15 +241,6 @@ namespace SeweralIdeas.Expressions
                 ThrowNoOverloads(name, arguments);
             }
             
-            if(name == "time")
-            {
-                if((arguments.Count == 0))
-                {
-                    return new AnonymousFunctionExpression<float>(name, ()=>Time.time, false);
-                }
-                ThrowNoOverloads(name, arguments);
-            }
-            
             return null;
         }
 
