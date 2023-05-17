@@ -1080,7 +1080,7 @@ namespace SeweralIdeas.Expressions
             object IExpression.Evaluate(IEvalContext context) => throw new NotImplementedException();
             Type IExpression.ReturnType => null;
 
-            public void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+            public void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
             {
             }
             public IExpression SimplifyIfPure(out bool pure)
@@ -1090,7 +1090,7 @@ namespace SeweralIdeas.Expressions
             }
         }
 
-        public class Resolver : IResolver
+        private class Resolver : IResolver
         {
             public virtual IExpression ResolveMethodInvocation(string name, List<IExpression> arguments)
             {

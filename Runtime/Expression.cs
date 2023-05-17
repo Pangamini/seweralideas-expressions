@@ -14,11 +14,11 @@ namespace SeweralIdeas.Expressions
         Type ReturnType { get; }
         bool IsPureSelf { get; }
 
-        void VisitChildren(ChildReplacementVisitor visitor);
+        void VisitTopLevelChildren(ChildReplacementVisitor visitor);
+        
         IExpression SimplifyIfPure(out bool pure);
     }
-
-
+    
     public interface IExpression<T> : IExpression
     {
         new T Evaluate(IEvalContext context);
@@ -30,12 +30,11 @@ namespace SeweralIdeas.Expressions
         public abstract T Evaluate(IEvalContext context);
         public abstract string AsText();
         public abstract bool IsPureSelf { get; }
-        public abstract void VisitChildren(IExpression.ChildReplacementVisitor visitor);
+        public abstract void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor);
         public Type ReturnType => typeof( T );
         object IExpression.Evaluate(IEvalContext context) => Evaluate(context);
         public override string ToString() => $"<{typeof(T).Name}>{AsText()}";
-        
-        
+
         public virtual IExpression SimplifyIfPure(out bool pure)
         {
             if(!IsPureSelf)
@@ -55,7 +54,7 @@ namespace SeweralIdeas.Expressions
                 return childExp;
             };
 
-            VisitChildren(visitor);
+            VisitTopLevelChildren(visitor);
 
             if(childrenPure)
             {
@@ -84,7 +83,7 @@ namespace SeweralIdeas.Expressions
 
         public override sealed T Evaluate(IEvalContext context) => Value;
         public override sealed bool IsPureSelf => true;
-        public override sealed void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override sealed void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
         }
     }
@@ -94,7 +93,7 @@ namespace SeweralIdeas.Expressions
         private Operation m_op;
         private readonly List<IExpression<bool>> m_operands = new();
 
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             for( int i = 0; i < m_operands.Count; ++i )
             {
@@ -202,6 +201,21 @@ namespace SeweralIdeas.Expressions
         }
 
         public delegate void Visitor(IExpression expression);
+
+        public static bool GetIsPure(this IExpression expression)
+        {
+            bool isPure = true;
+
+
+            Visitor visitor = (expression) =>
+            {
+                if(!expression.IsPureSelf)
+                    isPure = false;
+            };
+            
+            expression.Visit(visitor);
+            return isPure;
+        }
         
         public static void Visit(this IExpression expression, Visitor visitor)
         {
@@ -216,7 +230,7 @@ namespace SeweralIdeas.Expressions
         private static void VisitInternal(IExpression expression, Visitor visitor, IExpression.ChildReplacementVisitor childVisitor)
         {
             visitor(expression);
-            expression.VisitChildren(childVisitor);
+            expression.VisitTopLevelChildren(childVisitor);
         }
 
         public static string ArithmeticOperationAsText(IReadOnlyList<IExpression> m_expressions, ArithmeticOperation operation)
@@ -275,7 +289,7 @@ namespace SeweralIdeas.Expressions
         public override bool IsPureSelf => true;
         public List<IExpression<string>> Operands => m_operands;
 
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             for( int i = 0; i < m_operands.Count; ++i )
             {
@@ -318,7 +332,7 @@ namespace SeweralIdeas.Expressions
         public override bool IsPureSelf => true;
         public List<IExpression<float>> Operands => m_operands;
 
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             for( int i = 0; i < m_operands.Count; ++i )
             {
@@ -417,7 +431,7 @@ namespace SeweralIdeas.Expressions
             get => m_operand;
             set => m_operand = value;
         }
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             m_operand = (IExpression<int>)visitor(m_operand);
         }
@@ -437,7 +451,7 @@ namespace SeweralIdeas.Expressions
             get => m_operand;
             set => m_operand = value;
         }
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             m_operand = (IExpression<bool>)visitor(m_operand);
         }
@@ -457,7 +471,7 @@ namespace SeweralIdeas.Expressions
             get => m_operand;
             set => m_operand = value;
         }
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             m_operand = (IExpression<float>)visitor(m_operand);
         }
@@ -471,7 +485,7 @@ namespace SeweralIdeas.Expressions
         public override bool IsPureSelf => true;
         public List<IExpression<int>> Operands => m_operands;
 
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             for( int i = 0; i < m_operands.Count; ++i )
             {
@@ -565,7 +579,7 @@ namespace SeweralIdeas.Expressions
         public override bool IsPureSelf => true;
         
         
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             m_lhs = (IExpression<T>) visitor(m_lhs);
             m_rhs = (IExpression<T>) visitor(m_rhs);
@@ -655,7 +669,7 @@ namespace SeweralIdeas.Expressions
             return this;
         }
 
-        public override void VisitChildren(IExpression.ChildReplacementVisitor visitor)
+        public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             m_condition = (IExpression<bool>) visitor(m_condition);
             m_ifTrue = (IExpression<T>) visitor(m_ifTrue);
