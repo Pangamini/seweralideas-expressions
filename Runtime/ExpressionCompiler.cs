@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
-using System.Diagnostics.CodeAnalysis;
 using SeweralIdeas.Pooling;
 
 namespace SeweralIdeas.Expressions
@@ -22,15 +21,15 @@ namespace SeweralIdeas.Expressions
         
         public interface IResolver
         {
-            IExpression ResolveMethodInvocation(string invocationName, List<IExpression> arguments);
-            IExpression ResolveVariable(string namedObjName);
+            IExpression? ResolveMethodInvocation(string invocationName, List<IExpression> arguments);
+            IExpression? ResolveVariable(string namedObjName);
         }
 
         private struct State
         {
-            public int pos;
-            public string expText;
-            public IResolver resolver;
+            public int Pos;
+            public string ExpText;
+            public IResolver Resolver;
         }
 
         public class ParseException : Exception
@@ -41,8 +40,11 @@ namespace SeweralIdeas.Expressions
         }
 
 
-        public static IExpression<T> Parse<T>([NotNull] string expText, [NotNull] IResolver resolver, Options options = DefaultOptions)
+        public static IExpression<T> Parse<T>(string expText, IResolver? resolver, Options options = DefaultOptions)
         {
+            if(resolver == null)
+                resolver = DefaultResolver;
+            
             IExpression exp = Parse(expText, resolver, options);
 
             if(exp is IExpression<T> tExp)
@@ -51,25 +53,26 @@ namespace SeweralIdeas.Expressions
             throw new ParseException($"Invalid return type '{exp.ReturnType.Name}', expected '{typeof( T ).Name}'");
         }
 
-        public static IExpression<T> Parse<T>([NotNull] string expText, Options options = DefaultOptions) => Parse<T>(expText, DefaultResolver, options);
+        public static IExpression<T> Parse<T>(string expText, Options options = DefaultOptions) => Parse<T>(expText, DefaultResolver, options);
 
-        public static IExpression Parse([NotNull] string expText, Options options = DefaultOptions) => Parse(expText, DefaultResolver, options);
+        public static IExpression Parse(string expText, Options options = DefaultOptions) => Parse(expText, DefaultResolver, options);
 
-        public static IExpression Parse([NotNull] string expText, [NotNull] IResolver resolver, Options options = DefaultOptions)
+        public static IExpression Parse(string expText, IResolver? resolver, Options options = DefaultOptions)
         {
             if(expText == null)
                 throw new ArgumentNullException(nameof(expText));
 
-            int pos = 0;
-
+            if(resolver == null)
+                resolver = DefaultResolver;
+            
             var state = new State()
             {
-                pos = 0,
-                expText = expText,
-                resolver = resolver
+                Pos = 0,
+                ExpText = expText,
+                Resolver = resolver
             };
 
-            if(!ParseSubExpression(ref state, false, out IExpression expression, out bool endedWithComma) || endedWithComma)
+            if(!ParseSubExpression(ref state, false, out IExpression? expression, out bool endedWithComma) || endedWithComma)
             {
                 if(endedWithComma)
                     throw new ParseException("Unexpected comma");
@@ -77,9 +80,10 @@ namespace SeweralIdeas.Expressions
                     throw new ParseException("Parsing error");
             }
 
+            Debug.Assert(expression != null);
             if(HasOption(options,Options.OptimizeConstants))
             {
-                expression = expression.SimplifyIfPure(out var pure);
+                expression = expression.SimplifyIfPure(out _);
             }
 
             return expression;
@@ -105,9 +109,10 @@ namespace SeweralIdeas.Expressions
                     break;
                 }
 
-                bool end = ParseSubExpression(ref startState, true, out var expression, out endedWithComma);
+                bool end = ParseSubExpression(ref startState, true, out IExpression? expression, out endedWithComma);
+                Debug.Assert(expression != null);
                 outArgs.Add(expression);
-                state.pos = startState.pos;
+                state.Pos = startState.Pos;
                 if(end)
                 {
                     break;
@@ -121,13 +126,14 @@ namespace SeweralIdeas.Expressions
             return true;
         }
 
-        private static bool ParseSubExpression(ref State state, bool endsWithBracket, out IExpression output, out bool endedWithComma)
+        private static bool ParseSubExpression(ref State state, bool endsWithBracket, [NotNullWhen(true)] out IExpression? output, out bool endedWithComma)
         {
             endedWithComma = false;
             output = default;
+            
             bool endedWithBracket = false;
 
-            using (UnityEngine.Pool.ListPool<OperatorOrOperand>.Get(out var elements))
+            using (ListPool<OperatorOrOperand>.Get(out var elements))
             {
                 if(!ReadTokens(ref state, ref endedWithComma, elements, ref endedWithBracket))
                     return false;
@@ -163,11 +169,11 @@ namespace SeweralIdeas.Expressions
                 {
                     if(elements.Count > 0 && elements[^1].IsOperand && elements[^1].Operand is NamedObjectExpression invocation)
                     {
-                        using (UnityEngine.Pool.ListPool<IExpression>.Get(out var arguments))
+                        using (ListPool<IExpression>.Get(out var arguments))
                         {
                             if(ParseArguments(ref state, arguments))
                             {
-                                var methodInvocation = state.resolver.ResolveMethodInvocation(invocation.Name, arguments);
+                                var methodInvocation = state.Resolver.ResolveMethodInvocation(invocation.Name, arguments);
                                 if(methodInvocation == null)
                                     throw new ParseException($"Cannot resolve method name '{invocation.Name}'");
 
@@ -179,12 +185,12 @@ namespace SeweralIdeas.Expressions
                                 return false;
                             }
                         }
-
-                        continue;
+                        
+                        // continue
                     }
                     else
                     {
-                        if(ParseSubExpression(ref state, true, out var subExpression, out bool comma))
+                        if(ParseSubExpression(ref state, true, out IExpression? subExpression, out bool comma))
                         {
                             if(comma)
                                 throw new ParseException("Unexpected comma");
@@ -203,7 +209,7 @@ namespace SeweralIdeas.Expressions
 
                 if(token.type == Token.Type.Operator)
                 {
-                    elements.Add(new OperatorOrOperand(token.op));
+                    elements.Add(new OperatorOrOperand(token.Op));
                     continue;
                 }
 
@@ -211,7 +217,7 @@ namespace SeweralIdeas.Expressions
                 {
                     if(elements.Count > 0 && elements[^1].IsOperand)
                         throw new ParseException("Expected operator");
-                    elements.Add(new OperatorOrOperand(new ConstantStringExpression() { Value = token.text }));
+                    elements.Add(new OperatorOrOperand(new ConstantStringExpression() { Value = token.Text }));
                     continue;
                 }
 
@@ -219,7 +225,8 @@ namespace SeweralIdeas.Expressions
                 {
                     if(elements.Count > 0 && elements[^1].IsOperand)
                         throw new ParseException("Expected operator");
-                    elements.Add(new OperatorOrOperand(TextToOperand(token.text)));
+                    
+                    elements.Add(new OperatorOrOperand(TextToOperand(token.Text!)));
                     continue;
                 }
             }
@@ -238,7 +245,7 @@ namespace SeweralIdeas.Expressions
 
                 if(operand is NamedObjectExpression namedObj)
                 {
-                    var newOperand = state.resolver?.ResolveVariable(namedObj.Name);
+                    var newOperand = state.Resolver?.ResolveVariable(namedObj.Name);
                     if(newOperand == null)
                     {
                         throw new ParseException($"Unrecognized symbol '{namedObj.Name}'");
@@ -422,11 +429,11 @@ namespace SeweralIdeas.Expressions
             Operator op = elements.GetExpectedOperator(i, Operator.Condition);
             Operator op2 = elements.GetExpectedOperator(i + 2, Operator.Branch);
 
-            var condition = elements.GetExpectedOperand(i - 1);
-            var trueBranch = elements.GetExpectedOperand(i + 1);
-            var falseBranch = elements.GetExpectedOperand(i + 3);
+            IExpression condition = elements.GetExpectedOperand(i - 1);
+            IExpression trueBranch = elements.GetExpectedOperand(i + 1);
+            IExpression falseBranch = elements.GetExpectedOperand(i + 3);
 
-            IExpression operatorExpression = null;
+            IExpression? operatorExpression = null;
 
             if(!(condition is IExpression<bool> conditionBool))
             {
@@ -486,7 +493,7 @@ namespace SeweralIdeas.Expressions
         private static void MakeLogicalOperatorExpression(List<OperatorOrOperand> elements, ref int i)
         {
             Operator op = elements.GetExpectedOperator(i);
-            IExpression operatorExpression = null;
+            IExpression? operatorExpression = null;
             IExpression lhs = elements.GetExpectedOperand(i - 1);
             IExpression rhs = elements.GetExpectedOperand(i + 1);
 
@@ -519,7 +526,7 @@ namespace SeweralIdeas.Expressions
 
         private static void MakeRelationalOperatorExpression(List<OperatorOrOperand> elements, ref int i)
         {
-            IExpression operatorExpression = null;
+            IExpression? operatorExpression = null;
             var lhs = elements.GetExpectedOperand(i - 1);
             var rhs = elements.GetExpectedOperand(i + 1);
             var op = elements.GetExpectedOperator(i);
@@ -597,9 +604,9 @@ namespace SeweralIdeas.Expressions
 
         private static void MakeArithmeticOperatorExpression(List<OperatorOrOperand> elements, ref int i)
         {
-            IExpression operatorExpression = null;
+            IExpression? operatorExpression = null;
 
-            using (UnityEngine.Pool.ListPool<IExpression>.Get(out var myOperands))
+            using (ListPool<IExpression>.Get(out var myOperands))
             {
                 myOperands.Add(elements.GetExpectedOperand(i - 1));
                 myOperands.Add(elements.GetExpectedOperand(i + 1));
@@ -694,10 +701,7 @@ namespace SeweralIdeas.Expressions
                 return new ConstantExpression<bool>() { Value = boolean };
             }
 
-            return new NamedObjectExpression()
-            {
-                Name = text
-            };
+            return new NamedObjectExpression(text);
         }
 
 
@@ -714,16 +718,15 @@ namespace SeweralIdeas.Expressions
             }
 
             public Type type { get; private set; }
-            public string text { get; private set; }
-
-            public Operator op { get; private set; }
+            public string? Text { get; private set; }
+            public Operator Op { get; private set; }
 
             public static Token Operand(string name)
             {
                 return new Token()
                 {
                     type = Type.Operand,
-                    text = name
+                    Text = name
                 };
             }
 
@@ -732,7 +735,7 @@ namespace SeweralIdeas.Expressions
                 return new Token()
                 {
                     type = Type.StringLiteral,
-                    text = name
+                    Text = name
                 };
             }
 
@@ -740,36 +743,36 @@ namespace SeweralIdeas.Expressions
             {
                 return new Token()
                 {
-                    op = op,
+                    Op = op,
                     type = Type.Operator,
-                    text = null
+                    Text = null
                 };
             }
 
             public static Token BracketOpen() => new Token()
             {
                 type = Type.BracketOpen,
-                text = null
+                Text = null
             };
 
             public static Token BracketClose() => new Token()
             {
                 type = Type.BracketClose,
-                text = null
+                Text = null
             };
 
             public static Token Comma() => new Token()
             {
                 type = Type.Comma,
-                text = null
+                Text = null
             };
 
-            public override string ToString()
+            public override string? ToString()
             {
                 switch (type)
                 {
-                    case Type.Operand: return text;
-                    case Type.Operator: return op.ToString();
+                    case Type.Operand: return Text;
+                    case Type.Operator: return Op.ToString();
                     case Type.BracketClose: return ")";
                     case Type.BracketOpen: return "(";
                     default: throw new IndexOutOfRangeException();
@@ -794,18 +797,18 @@ namespace SeweralIdeas.Expressions
                 return true;
             }
 
-            if(state.pos >= state.expText.Length)
+            if(state.Pos >= state.ExpText.Length)
             {
                 token = default;
                 return false;
             }
 
-            char nextChar = state.expText[state.pos];
+            char nextChar = state.ExpText[state.Pos];
 
             if(nextChar == '"')
             {
-                state.pos++;
-                if(ParseString(ref state, out string str))
+                state.Pos++;
+                if(ParseString(ref state, out string? str))
                 {
                     token = Token.StringLiteral(str);
                     return true;
@@ -815,43 +818,43 @@ namespace SeweralIdeas.Expressions
 
             if(nextChar == '(')
             {
-                state.pos++;
+                state.Pos++;
                 token = Token.BracketOpen();
                 return true;
             }
 
             if(nextChar == ')')
             {
-                state.pos++;
+                state.Pos++;
                 token = Token.BracketClose();
                 return true;
             }
 
             if(nextChar == ',')
             {
-                state.pos++;
+                state.Pos++;
                 token = Token.Comma();
                 return true;
             }
 
             throw new ParseException($"Unexpected character '{nextChar}'");
-            token = default;
-            return false;
+            // token = default;
+            // return false;
         }
 
-        private static bool ParseString(ref State state, out string str)
+        private static bool ParseString(ref State state, [NotNullWhen(true)] out string? str)
         {
-            int start = state.pos;
+            int start = state.Pos;
             using (StringBuilderPool.Get(out var sb))
             {
-                for( ; state.pos < state.expText.Length; ++state.pos )
+                for( ; state.Pos < state.ExpText.Length; ++state.Pos )
                 {
-                    char ch = state.expText[state.pos];
+                    char ch = state.ExpText[state.Pos];
 
                     if(ch == '\\')
                     {
-                        state.pos++;
-                        char escaped = state.expText[state.pos];
+                        state.Pos++;
+                        char escaped = state.ExpText[state.Pos];
                         var replace = escaped switch
                         {
                             '"' => '"',
@@ -866,7 +869,7 @@ namespace SeweralIdeas.Expressions
                     else if(ch == '"')
                     {
                         str = sb.ToString();
-                        state.pos++;
+                        state.Pos++;
                         return true;
                     }
 
@@ -875,53 +878,54 @@ namespace SeweralIdeas.Expressions
                         sb.Append(ch);
                     }
                 }
+                
                 str = default;
-                state.pos = start;
+                state.Pos = start;
                 return false;
             }
         }
 
         private static bool CheckOperator(ref State state, string operatorString)
         {
-            if(string.Compare(state.expText, state.pos, operatorString, 0, operatorString.Length, StringComparison.InvariantCulture) != 0)
+            if(string.Compare(state.ExpText, state.Pos, operatorString, 0, operatorString.Length, StringComparison.InvariantCulture) != 0)
                 return false;
 
-            state.pos += operatorString.Length;
+            state.Pos += operatorString.Length;
             return true;
         }
 
         private static bool CheckSubstring(ref State state, string substring)
         {
-            return string.Compare(state.expText, state.pos, substring, 0, substring.Length, StringComparison.InvariantCulture) == 0;
+            return string.Compare(state.ExpText, state.Pos, substring, 0, substring.Length, StringComparison.InvariantCulture) == 0;
         }
 
         private static bool ParseOperand(ref State state, StringBuilder sb)
         {
             sb.Clear();
             SkipWhitespace(ref state);
-            int opStart = state.pos;
+            int opStart = state.Pos;
 
             while(GetChar(ref state, out var ch) && IsObjectNameChar(ch))
             {
-                ++state.pos;
+                ++state.Pos;
             }
 
-            int length = state.pos - opStart;
+            int length = state.Pos - opStart;
             if(length <= 0)
             {
-                state.pos = opStart;
+                state.Pos = opStart;
                 return false;
             }
 
-            sb.Append(state.expText, opStart, length);
+            sb.Append(state.ExpText, opStart, length);
             return true;
         }
 
         private static bool GetChar(ref State state, out char ch)
         {
-            if(state.pos < state.expText.Length)
+            if(state.Pos < state.ExpText.Length)
             {
-                ch = state.expText[state.pos];
+                ch = state.ExpText[state.Pos];
                 return true;
             }
             ch = default;
@@ -934,7 +938,7 @@ namespace SeweralIdeas.Expressions
         {
             while(GetChar(ref state, out var ch) && char.IsWhiteSpace(ch))
             {
-                ++state.pos;
+                ++state.Pos;
             }
         }
 
@@ -962,7 +966,7 @@ namespace SeweralIdeas.Expressions
 
         private static bool ParseOperator(ref State state, out Operator op)
         {
-            int start = state.pos;
+            int start = state.Pos;
             SkipWhitespace(ref state);
             if(CheckOperator(ref state, "=="))
             {
@@ -1067,18 +1071,23 @@ namespace SeweralIdeas.Expressions
             }
 
             op = default;
-            state.pos = start;
+            state.Pos = start;
             return false;
         }
 
         private class NamedObjectExpression : IExpression
         {
+            public NamedObjectExpression(string name)
+            {
+                Name = name;
+            }
+
             public bool IsPureSelf => false;
-            public string Name { get; set; }
+            public string Name { get; }
             public string AsText() => Name;
 
-            object IExpression.Evaluate(IEvalContext context) => throw new NotImplementedException();
-            Type IExpression.ReturnType => null;
+            object IExpression.Evaluate(IEvalContext? context) => throw new NotImplementedException();
+            Type IExpression.ReturnType => null!;
 
             public void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
             {
@@ -1092,12 +1101,12 @@ namespace SeweralIdeas.Expressions
 
         private class Resolver : IResolver
         {
-            public virtual IExpression ResolveMethodInvocation(string name, List<IExpression> arguments)
+            public virtual IExpression? ResolveMethodInvocation(string name, List<IExpression> arguments)
             {
                 return ExpressionFunctions.ResolveMethodInvocation(name, arguments);
             }
 
-            public virtual IExpression ResolveVariable(string name)
+            public virtual IExpression? ResolveVariable(string name)
             {
                 return ExpressionFunctions.ResolveConstant(name);
             }
@@ -1108,7 +1117,7 @@ namespace SeweralIdeas.Expressions
     {
         public OperatorOrOperand(IExpression expression)
         {
-            m_expression = expression;
+            m_expression = expression ?? throw new ArgumentNullException(nameof(expression));
             m_operator = ExpressionCompiler.Operator.None;
         }
 
@@ -1118,16 +1127,18 @@ namespace SeweralIdeas.Expressions
             m_operator = op;
         }
 
-        private IExpression m_expression;
-        private ExpressionCompiler.Operator m_operator;
+        private readonly IExpression? m_expression;
+        private readonly ExpressionCompiler.Operator m_operator;
 
         public bool IsOperand => m_expression != null;
         public bool IsOperator => m_expression == null;
         public IExpression Operand
         {
-            get {
+            get 
+            {
                 if(!IsOperand)
                     throw new InvalidCastException();
+                Debug.Assert(m_expression != null);
                 return m_expression;
             }
         }
@@ -1140,12 +1151,13 @@ namespace SeweralIdeas.Expressions
             }
         }
 
-        public override string ToString()
+        public override string? ToString()
         {
             if(IsOperator)
                 return m_operator.ToString();
-            else
-                return m_expression.ToString();
+            Debug.Assert(m_expression != null);
+            return m_expression.ToString();
+            
         }
     }
 

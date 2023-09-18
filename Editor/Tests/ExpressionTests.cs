@@ -1,3 +1,8 @@
+#if UNITY_5_3_OR_NEWER
+#define UNITY
+#endif
+
+#if UNITY
 using NUnit.Framework;
 using SeweralIdeas.Expressions;
 
@@ -42,3 +47,4 @@ public class ExpressionTests
         ExpressionCompiler.Parse(expression);
     }
 }
+#endif
