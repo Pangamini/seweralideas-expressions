@@ -74,6 +74,13 @@ namespace SeweralIdeas.Expressions
             init => m_value = value;
         }
 
+        public ConstantExpression(){ }
+        
+        public ConstantExpression(T? value)
+        {
+            Value = value;
+        }
+
         public override string AsText() => Value?.ToString()??"<null>";
 
         public override sealed T? Evaluate(IEvalContext? context) => Value;
