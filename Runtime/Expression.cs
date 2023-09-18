@@ -1,8 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using UnityEngine;
 
 namespace SeweralIdeas.Expressions
 {
@@ -10,7 +7,7 @@ namespace SeweralIdeas.Expressions
     {
         public delegate IExpression ChildReplacementVisitor(IExpression expression);
         string AsText();
-        object Evaluate(IEvalContext context);
+        object? Evaluate(IEvalContext? context);
         Type ReturnType { get; }
         bool IsPureSelf { get; }
 
@@ -19,20 +16,20 @@ namespace SeweralIdeas.Expressions
         IExpression SimplifyIfPure(out bool pure);
     }
     
-    public interface IExpression<T> : IExpression
+    public interface IExpression<out T> : IExpression
     {
-        new T Evaluate(IEvalContext context);
+        new T? Evaluate(IEvalContext? context);
     }
 
     [Serializable]
     public abstract class Expression<T> : IExpression<T>
     {
-        public abstract T Evaluate(IEvalContext context);
+        public abstract T? Evaluate(IEvalContext? context);
         public abstract string AsText();
         public abstract bool IsPureSelf { get; }
         public abstract void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor);
         public Type ReturnType => typeof( T );
-        object IExpression.Evaluate(IEvalContext context) => Evaluate(context);
+        object? IExpression.Evaluate(IEvalContext? context) => Evaluate(context);
         public override string ToString() => $"<{typeof(T).Name}>{AsText()}";
 
         public virtual IExpression SimplifyIfPure(out bool pure)
@@ -65,23 +62,21 @@ namespace SeweralIdeas.Expressions
             pure = false;
             return this;
         }
-
     }
 
-    [Serializable]
     public class ConstantExpression<T> : Expression<T>
     {
-        [SerializeField] private T m_value;
+        private T? m_value;
 
-        public T Value
+        public T? Value
         {
             get => m_value;
-            set => m_value = value;
+            init => m_value = value;
         }
 
-        public override string AsText() => Value.ToString();
+        public override string AsText() => Value?.ToString()??"<null>";
 
-        public override sealed T Evaluate(IEvalContext context) => Value;
+        public override sealed T? Evaluate(IEvalContext? context) => Value;
         public override sealed bool IsPureSelf => true;
         public override sealed void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
@@ -118,7 +113,8 @@ namespace SeweralIdeas.Expressions
             {
                 Operation.And => " & ",
                 Operation.Or => " | ",
-                Operation.Xor => " ^ "
+                Operation.Xor => " ^ ",
+                _ => throw new ArgumentOutOfRangeException()
             };
 
             sb.Append(m_operands[0].GetAsText());
@@ -146,7 +142,7 @@ namespace SeweralIdeas.Expressions
             set => m_op = value;
         }
 
-        public override bool Evaluate(IEvalContext context)
+        public override bool Evaluate(IEvalContext? context)
         {
             switch (m_op)
             {
@@ -193,7 +189,7 @@ namespace SeweralIdeas.Expressions
 
     public static class Helpers
     {
-        public static string GetAsText(this IExpression expression)
+        public static string GetAsText(this IExpression? expression)
         {
             if(expression == null)
                 return "<?>";
@@ -205,11 +201,10 @@ namespace SeweralIdeas.Expressions
         public static bool GetIsPure(this IExpression expression)
         {
             bool isPure = true;
-
-
-            Visitor visitor = (expression) =>
+            
+            Visitor visitor = (exp) =>
             {
-                if(!expression.IsPureSelf)
+                if(!exp.IsPureSelf)
                     isPure = false;
             };
             
@@ -233,7 +228,7 @@ namespace SeweralIdeas.Expressions
             expression.VisitTopLevelChildren(childVisitor);
         }
 
-        public static string ArithmeticOperationAsText(IReadOnlyList<IExpression> m_expressions, ArithmeticOperation operation)
+        public static string ArithmeticOperationAsText(IReadOnlyList<IExpression> expressions, ArithmeticOperation operation)
         {
             var sb = new StringBuilder();
             sb.Append("(");
@@ -244,15 +239,16 @@ namespace SeweralIdeas.Expressions
                 ArithmeticOperation.Multiply => " * ",
                 ArithmeticOperation.Divide => " / ",
                 ArithmeticOperation.Subtract => " - ",
-                ArithmeticOperation.Mod => " % "
+                ArithmeticOperation.Mod => " % ",
+                _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null)
             };
 
-            sb.Append(m_expressions[0].GetAsText());
+            sb.Append(expressions[0].GetAsText());
 
-            for( int i = 1; i < m_expressions.Count; ++i )
+            for( int i = 1; i < expressions.Count; ++i )
             {
                 sb.Append(separator);
-                sb.Append(m_expressions[i].GetAsText());
+                sb.Append(expressions[i].GetAsText());
             }
             sb.Append(")");
             return sb.ToString();
@@ -284,7 +280,6 @@ namespace SeweralIdeas.Expressions
 
     public class StringConcatExpression : Expression<string>
     {
-        private ArithmeticOperation m_op;
         private readonly List<IExpression<string>> m_operands = new();
         public override bool IsPureSelf => true;
         public List<IExpression<string>> Operands => m_operands;
@@ -305,14 +300,14 @@ namespace SeweralIdeas.Expressions
             return Helpers.ArithmeticOperationAsText(m_operands, ArithmeticOperation.Add);
         }
 
-        public override string Evaluate(IEvalContext context)
+        public override string? Evaluate(IEvalContext? context)
         {
             if(m_operands.Count == 0)
             {
                 return "";
             }
 
-            string value = m_operands[0].Evaluate(context);
+            string? value = m_operands[0].Evaluate(context);
 
             for( var index = 1; index < m_operands.Count; index++ )
             {
@@ -349,12 +344,12 @@ namespace SeweralIdeas.Expressions
         public override string AsText()
         {
             if (m_operands.Count == 0)
-                return Evaluate(null).ToString();
+                return Evaluate(null).ToString(CultureInfo.InvariantCulture);
             
             return Helpers.ArithmeticOperationAsText(m_operands, Op);
         }
 
-        public override float Evaluate(IEvalContext context)
+        public override float Evaluate(IEvalContext? context)
         {
             if (m_operands.Count == 0)
             {
@@ -417,12 +412,12 @@ namespace SeweralIdeas.Expressions
 
     public class NegateIntExpression : Expression<int>, IExpression<float>
     {
-        private IExpression<int> m_operand;
+        private IExpression<int> m_operand = null!;
         
-        public override int Evaluate(IEvalContext context) => -m_operand.Evaluate(context);
+        public override int Evaluate(IEvalContext? context) => -m_operand.Evaluate(context);
         public override string AsText() => $"-{m_operand.AsText()}";
 
-        float IExpression<float>.Evaluate(IEvalContext context) => Evaluate(context);
+        float IExpression<float>.Evaluate(IEvalContext? context) => Evaluate(context);
         
         public override bool IsPureSelf => true;
         
@@ -439,9 +434,9 @@ namespace SeweralIdeas.Expressions
 
     public class NotExpression : Expression<bool>
     {
-        private IExpression<bool> m_operand;
+        private IExpression<bool> m_operand = null!;
         
-        public override bool Evaluate(IEvalContext context) => !m_operand.Evaluate(context);
+        public override bool Evaluate(IEvalContext? context) => !m_operand.Evaluate(context);
         public override string AsText() => $"!{m_operand.AsText()}";
         
         public override bool IsPureSelf => true;
@@ -459,9 +454,9 @@ namespace SeweralIdeas.Expressions
     
     public class NegateFloatExpression : Expression<float>
     {
-        private IExpression<float> m_operand;
+        private IExpression<float> m_operand = null!;
         
-        public override float Evaluate(IEvalContext context) => -m_operand.Evaluate(context);
+        public override float Evaluate(IEvalContext? context) => -m_operand.Evaluate(context);
         public override string AsText() => $"-{m_operand.AsText()}";
         
         public override bool IsPureSelf => true;
@@ -507,9 +502,9 @@ namespace SeweralIdeas.Expressions
             return Helpers.ArithmeticOperationAsText(m_operands, Op);
         }
         
-        float IExpression<float>.Evaluate(IEvalContext context) => Evaluate(context);
+        float IExpression<float>.Evaluate(IEvalContext? context) => Evaluate(context);
         
-        public override int Evaluate(IEvalContext context)
+        public override int Evaluate(IEvalContext? context)
         {
             if (m_operands.Count == 0)
             {
@@ -574,8 +569,8 @@ namespace SeweralIdeas.Expressions
     public class CompareExpression<T> : Expression<bool> where T:IComparable<T>
     {
         private RelationOperation m_op;
-        private IExpression<T> m_lhs;
-        private IExpression<T> m_rhs;
+        private IExpression<T> m_lhs = null!;
+        private IExpression<T> m_rhs = null!;
         public override bool IsPureSelf => true;
         
         
@@ -618,11 +613,11 @@ namespace SeweralIdeas.Expressions
             return $"({m_lhs.GetAsText()} {separator} {m_rhs.GetAsText()})";
         }
 
-        public override bool Evaluate(IEvalContext context)
+        public override bool Evaluate(IEvalContext? context)
         {
-            T leftVal = Lhs.Evaluate(context);
-            T rightVal = Rhs.Evaluate(context);
-            int comparison = leftVal.CompareTo(rightVal);
+            T? leftVal = Lhs.Evaluate(context);
+            T? rightVal = Rhs.Evaluate(context);
+            int comparison = Comparer<T>.Default.Compare(leftVal, rightVal);
 
             return Op switch
             {
@@ -639,9 +634,9 @@ namespace SeweralIdeas.Expressions
 
     public class SelectExpression<T> : Expression<T>
     {
-        private IExpression<bool> m_condition;
-        private IExpression<T> m_ifTrue;
-        private IExpression<T> m_ifFalse;
+        private IExpression<bool> m_condition = null!;
+        private IExpression<T> m_ifTrue = null!;
+        private IExpression<T> m_ifFalse = null!;
         public override bool IsPureSelf => true;
 
         public override IExpression SimplifyIfPure(out bool pure)
@@ -692,7 +687,7 @@ namespace SeweralIdeas.Expressions
             set => m_ifFalse = value;
         }
 
-        public override T Evaluate(IEvalContext context)
+        public override T? Evaluate(IEvalContext? context)
         {
             if (Condition.Evaluate(context))
             {
@@ -712,13 +707,13 @@ namespace SeweralIdeas.Expressions
 
     public class SelectIntExpression : SelectExpression<int>, IExpression<float>
     {
-        float IExpression<float>.Evaluate(IEvalContext context) => Evaluate(context);
+        float IExpression<float>.Evaluate(IEvalContext? context) => Evaluate(context);
     }
 
     [Serializable]
     public class ConstantIntExpression : ConstantExpression<int>, IExpression<float>
     {
-        float IExpression<float>.Evaluate(IEvalContext context) => Evaluate(context);
+        float IExpression<float>.Evaluate(IEvalContext? context) => Evaluate(context);
     }
     
     [Serializable]
@@ -733,7 +728,7 @@ namespace SeweralIdeas.Expressions
         public override string AsText()
         {
             // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if(Mathf.Floor(Value) == Value)
+            if(MathF.Floor(Value) == Value)
                 return Value.ToString(".0", CultureInfo.InvariantCulture);
             else
                 return Value.ToString(CultureInfo.InvariantCulture);
@@ -742,6 +737,6 @@ namespace SeweralIdeas.Expressions
     
     public interface IEvalContext
     {
-        T GetValue<T>(object variable);
+        T? GetValue<T>(object variable);
     }
 }
