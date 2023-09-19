@@ -56,7 +56,7 @@ namespace SeweralIdeas.Expressions
             if(childrenPure)
             {
                 pure = true;
-                return Helpers.ExpressionToConstant(this);
+                return ExpressionUtils.ExpressionToConstant(this);
             }
             
             pure = false;
@@ -95,6 +95,14 @@ namespace SeweralIdeas.Expressions
         private Operation m_op;
         private readonly List<IExpression<bool>> m_operands = new();
 
+        public LogicalExpression() { }
+        
+        public LogicalExpression(Operation operation, params IExpression<bool>[] operands)
+        {
+            Op = operation;
+            m_operands.AddRange(operands);
+        }
+        
         public override void VisitTopLevelChildren(IExpression.ChildReplacementVisitor visitor)
         {
             for( int i = 0; i < m_operands.Count; ++i )
@@ -194,7 +202,7 @@ namespace SeweralIdeas.Expressions
         Mod
     }
 
-    public static class Helpers
+    public static class ExpressionUtils
     {
         public static string GetAsText(this IExpression? expression)
         {
@@ -261,26 +269,7 @@ namespace SeweralIdeas.Expressions
             return sb.ToString();
         }
         
-        public static IExpression ExpressionToConstant(IExpression expression)
-        {
-            if(expression.ReturnType == typeof( int ))
-            {
-                return new ConstantIntExpression { Value = ((IExpression<int>)expression).Evaluate(null) };
-            }
-            if(expression.ReturnType == typeof( float ))
-            {
-                return new ConstantFloatExpression { Value = ((IExpression<float>)expression).Evaluate(null) };
-            }
-            if(expression.ReturnType == typeof( bool ))
-            {
-                return new ConstantExpression<bool> { Value = ((IExpression<bool>)expression).Evaluate(null) };
-            }
-            if(expression.ReturnType == typeof( string ))
-            {
-                return new ConstantStringExpression { Value = ((IExpression<string>)expression).Evaluate(null) };
-            }
-            throw new ArgumentException();
-        }
+        public static IExpression<T> ExpressionToConstant<T>(IExpression<T> expression, IEvalContext context = null) => new ConstantExpression<T> { Value = expression.Evaluate(context) };
 
 
     }
@@ -304,7 +293,7 @@ namespace SeweralIdeas.Expressions
             if(m_operands.Count == 0)
                 return "\"\"";
 
-            return Helpers.ArithmeticOperationAsText(m_operands, ArithmeticOperation.Add);
+            return ExpressionUtils.ArithmeticOperationAsText(m_operands, ArithmeticOperation.Add);
         }
 
         public override string? Evaluate(IEvalContext? context)
@@ -353,7 +342,7 @@ namespace SeweralIdeas.Expressions
             if (m_operands.Count == 0)
                 return Evaluate(null).ToString(CultureInfo.InvariantCulture);
             
-            return Helpers.ArithmeticOperationAsText(m_operands, Op);
+            return ExpressionUtils.ArithmeticOperationAsText(m_operands, Op);
         }
 
         public override float Evaluate(IEvalContext? context)
@@ -441,6 +430,13 @@ namespace SeweralIdeas.Expressions
 
     public class NotExpression : Expression<bool>
     {
+        public NotExpression() {}
+
+        public NotExpression(IExpression<bool> operand)
+        {
+            m_operand = operand;
+        }
+        
         private IExpression<bool> m_operand = null!;
         
         public override bool Evaluate(IEvalContext? context) => !m_operand.Evaluate(context);
@@ -506,7 +502,7 @@ namespace SeweralIdeas.Expressions
             if (m_operands.Count == 0)
                 return Evaluate(null).ToString();
 
-            return Helpers.ArithmeticOperationAsText(m_operands, Op);
+            return ExpressionUtils.ArithmeticOperationAsText(m_operands, Op);
         }
         
         float IExpression<float>.Evaluate(IEvalContext? context) => Evaluate(context);
@@ -715,31 +711,6 @@ namespace SeweralIdeas.Expressions
     public class SelectIntExpression : SelectExpression<int>, IExpression<float>
     {
         float IExpression<float>.Evaluate(IEvalContext? context) => Evaluate(context);
-    }
-
-    [Serializable]
-    public class ConstantIntExpression : ConstantExpression<int>, IExpression<float>
-    {
-        float IExpression<float>.Evaluate(IEvalContext? context) => Evaluate(context);
-    }
-    
-    [Serializable]
-    public class ConstantStringExpression : ConstantExpression<string>
-    {
-        public override string AsText() => $"\"{Value}\"";
-    }
-    
-    [Serializable]
-    public class ConstantFloatExpression : ConstantExpression<float>
-    {
-        public override string AsText()
-        {
-            // ReSharper disable once CompareOfFloatsByEqualityOperator
-            if(MathF.Floor(Value) == Value)
-                return Value.ToString(".0", CultureInfo.InvariantCulture);
-            else
-                return Value.ToString(CultureInfo.InvariantCulture);
-        }
     }
     
     public interface IEvalContext

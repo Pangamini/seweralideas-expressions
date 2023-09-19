@@ -281,11 +281,11 @@ namespace SeweralIdeas.Expressions
         {
             switch (name)
             {
-                case "pi": return new ConstantFloatExpression() { Value = MathF.PI };
-                case "deg2rad": return new ConstantFloatExpression() { Value = Deg2Rad };
-                case "rad2deg": return new ConstantFloatExpression() { Value = Rad2Deg };
-                case "inf": return new ConstantFloatExpression() { Value = float.PositiveInfinity };
-                case "epsilon": return new ConstantFloatExpression() { Value = float.Epsilon };
+                case "pi": return new ConstantExpression<float>() { Value = MathF.PI };
+                case "deg2rad": return new ConstantExpression<float>() { Value = Deg2Rad };
+                case "rad2deg": return new ConstantExpression<float>() { Value = Rad2Deg };
+                case "inf": return new ConstantExpression<float>() { Value = float.PositiveInfinity };
+                case "epsilon": return new ConstantExpression<float>() { Value = float.Epsilon };
             }
             return null;
         }
