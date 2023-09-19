@@ -217,7 +217,7 @@ namespace SeweralIdeas.Expressions
                 {
                     if(elements.Count > 0 && elements[^1].IsOperand)
                         throw new ParseException("Expected operator");
-                    elements.Add(new OperatorOrOperand(new ConstantStringExpression() { Value = token.Text }));
+                    elements.Add(new OperatorOrOperand(new ConstantExpression<string> { Value = token.Text }));
                     continue;
                 }
 
@@ -674,14 +674,14 @@ namespace SeweralIdeas.Expressions
             {
                 if(int.TryParse(text, out int integer))
                 {
-                    return new ConstantIntExpression()
+                    return new ConstantExpression<int>()
                     {
                         Value = integer
                     };
                 }
                 if(float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out float floating))
                 {
-                    return new ConstantFloatExpression()
+                    return new ConstantExpression<float>()
                     {
                         Value = floating
                     };
