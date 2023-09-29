@@ -1,3 +1,6 @@
+#nullable enable
+using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
@@ -71,7 +74,7 @@ namespace SeweralIdeas.Expressions
         public T? Value
         {
             get => m_value;
-            init => m_value = value;
+            set => m_value = value;
         }
 
         public ConstantExpression(){ }
@@ -269,7 +272,7 @@ namespace SeweralIdeas.Expressions
             return sb.ToString();
         }
         
-        public static IExpression<T> ExpressionToConstant<T>(IExpression<T> expression, IEvalContext context = null) => new ConstantExpression<T> { Value = expression.Evaluate(context) };
+        public static IExpression<T> ExpressionToConstant<T>(IExpression<T> expression, IEvalContext? context = null) => new ConstantExpression<T> { Value = expression.Evaluate(context) };
 
 
     }
@@ -620,7 +623,7 @@ namespace SeweralIdeas.Expressions
         {
             T? leftVal = Lhs.Evaluate(context);
             T? rightVal = Rhs.Evaluate(context);
-            int comparison = Comparer<T>.Default.Compare(leftVal, rightVal);
+            int comparison = Comparer<T>.Default.Compare(leftVal!, rightVal!);
 
             return Op switch
             {

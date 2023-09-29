@@ -1,3 +1,5 @@
+#nullable enable
+using System;
 namespace SeweralIdeas.Expressions
 {
 
@@ -78,7 +80,7 @@ namespace SeweralIdeas.Expressions
 
     public class AnonymousFunctionExpression<TArg0, TArg1, TArg2, TRet> : AnonymousFunctionExpressionBase<TRet>
     {
-        public AnonymousFunctionExpression(string name, Func<TArg0?, TArg1?, TArg2?, TRet?> func, bool pure, IExpression<TArg0> arg0, IExpression<TArg1> arg1, IExpression<TArg2> arg2) : base(name, pure)
+        public AnonymousFunctionExpression(string name, Func<TArg0?, TArg1?, TArg2?, TRet> func, bool pure, IExpression<TArg0> arg0, IExpression<TArg1> arg1, IExpression<TArg2> arg2) : base(name, pure)
         {
             Arg0 = arg0;
             Arg1 = arg1;
@@ -89,7 +91,7 @@ namespace SeweralIdeas.Expressions
         public IExpression<TArg0?> Arg0 { get; private set; }
         public IExpression<TArg1?> Arg1 { get; private set; }
         public IExpression<TArg2?> Arg2 { get; private set; }
-        public Func<TArg0?, TArg1?, TArg2?, TRet?> Func { get; }
+        public Func<TArg0?, TArg1?, TArg2?, TRet> Func { get; }
 
         public override TRet? Evaluate(IEvalContext? context) => Func(Arg0.Evaluate(context), Arg1.Evaluate(context), Arg2.Evaluate(context));
         public override string AsText() => $"{Name}({Arg0.AsText()}, {Arg1.AsText()})";
