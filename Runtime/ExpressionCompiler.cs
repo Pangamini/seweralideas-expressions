@@ -935,7 +935,7 @@ namespace SeweralIdeas.Expressions
             return false;
         }
 
-        private static bool IsObjectNameChar(char ch) => char.IsLetter(ch) || char.IsNumber(ch) || ch is '_' or '.' or '$';
+        private static bool IsObjectNameChar(char ch) => char.IsLetter(ch) || char.IsNumber(ch) || ch is '_' or '.';
 
         private static void SkipWhitespace(ref State state)
         {
