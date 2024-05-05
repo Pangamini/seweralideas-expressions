@@ -9,13 +9,10 @@ using SeweralIdeas.Expressions;
 public class ExpressionTests
 {
     [Test]
-    public void Test1()
+    public void Integers()
     {
         TestValue("5", 5);
         TestValue("-5", -5);
-        TestValue("5.0", 5.0f);
-        TestValue("\"Hello\"", "Hello");
-        TestValue("\"Hello\"+\"World\"", "Hello"+"World");
         TestValue("2+3*4", 2+3*4);
         TestValue("(2+3)*4", (2+3)*4);
         TestValue("5*-4", 5*-4);
@@ -25,9 +22,28 @@ public class ExpressionTests
         TestValue("5<=4", 5<=4);
         TestValue("5==4", 5==4);
         TestValue("5!=4", 5!=4);
-        TestValue("\"Hello\"+\"World\"==\"HelloWorld\"", "Hello"+"World"=="HelloWorld");
         TestValue("5>4? 1:2", 5>4? 1:2);
+        TestValue("5<4? 1:2", 5<4? 1:2);
         TestValue("5>4 & 4 < 5", 5>4 && 4 < 5);
+    }
+
+    [Test]
+    public void Strings()
+    {
+        TestValue("\"\"", "");
+        // TestValue("\"\\\"\"", "\"");
+        TestValue("\"Hello\"", "Hello");
+        TestValue("\"Hello\"+\"World\"", "Hello"+"World");
+        TestValue("\"Hello\"+\"World\"==\"HelloWorld\"", "Hello"+"World"=="HelloWorld");
+    }
+
+    [Test]
+    public void Floats()
+    {
+        TestValue("5.1", 5.1f);
+        TestValue("5.1 + 1.2", 5.1f + 1.2f);
+        TestValue("5.1 * 1.2", 5.1f * 1.2f);
+        TestValue("5.1 / 1.2", 5.1f / 1.2f);
     }
 
     public static void TestValue<T>(string expression, T expectedValue)

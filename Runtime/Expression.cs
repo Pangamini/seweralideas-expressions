@@ -84,7 +84,12 @@ namespace SeweralIdeas.Expressions
             Value = value;
         }
 
-        public override string AsText() => Value?.ToString()??"<null>";
+        public override string AsText()
+        {
+            if(typeof(T) == typeof(string))
+                return $"\"{Value?.ToString() ?? ""}\"";
+            return Value != null ? Convert.ToString(Value, CultureInfo.InvariantCulture)! : "<null>";
+        }
 
         public override sealed T? Evaluate(IEvalContext? context) => Value;
         public override sealed bool IsPureSelf => true;
