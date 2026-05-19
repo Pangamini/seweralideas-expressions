@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
-using SeweralIdeas.Pooling;
 
 namespace SeweralIdeas.Expressions
 {
@@ -135,7 +134,7 @@ namespace SeweralIdeas.Expressions
             output = default;
             
             bool endedWithBracket = false;
-
+            
             using (ListPool<OperatorOrOperand>.Get(out var elements))
             {
                 if(!ReadTokens(ref state, ref endedWithComma, elements, ref endedWithBracket))
